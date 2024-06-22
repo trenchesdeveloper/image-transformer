@@ -34,13 +34,18 @@ func WithMode(mode Mode) func() []string {
 
 // Transform will take the provided image and apply the primitive algorithm
 // to it, then return the resulting image.
-func Transform(image io.Reader, numShapes int, opts ...func() []string) (io.Reader, error) {
-	inputFile, err := tempfile("input_", "png")
+func Transform(image io.Reader, ext string, numShapes int, opts ...func() []string) (io.Reader, error) {
+	var args []string
+
+	for _, opt := range opts {
+		args = append(args, opt()...)
+	}
+	inputFile, err := tempfile("input_", ext)
 	if err != nil {
 		return nil, err
 	}
 
-	outputFile, err := tempfile("input_", "png")
+	outputFile, err := tempfile("input_", ext)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +60,7 @@ func Transform(image io.Reader, numShapes int, opts ...func() []string) (io.Read
 	}
 
 	// Run the primitive command
-	stdCombo, err := primitive(inputFile.Name(), outputFile.Name(), numShapes, ModeCombo)
+	stdCombo, err := primitive(inputFile.Name(), outputFile.Name(), numShapes, args...)
 
 	if err != nil {
 		return nil, err
@@ -75,10 +80,11 @@ func Transform(image io.Reader, numShapes int, opts ...func() []string) (io.Read
 	return outputBuffer, nil
 }
 
-func primitive(inputFile, outputFile string, numberOfShapes int, mode Mode) (string, error) {
-	argStr := fmt.Sprintf("-i %s -o %s -n %d -m %d", inputFile, outputFile, numberOfShapes, mode)
+func primitive(inputFile, outputFile string, numberOfShapes int,args ...string) (string, error) {
+	argStr := fmt.Sprintf("-i %s -o %s -n %d", inputFile, outputFile, numberOfShapes)
 
-	cmd := exec.Command("primitive", strings.Fields(argStr)...)
+	args = append(args, strings.Fields(argStr)...)
+	cmd := exec.Command("primitive", args...)
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
